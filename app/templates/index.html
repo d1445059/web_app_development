@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row g-4 justify-content-center">
+    
+    <!-- Balance Card -->
+    <div class="col-12 col-lg-10">
+        <div class="glass-card balance-display">
+            <div class="balance-title">總結餘 (Total Balance)</div>
+            <h1 class="balance-amount {{ 'text-income' if total_balance >= 0 else 'text-expense' }}">
+                $ {{ "{:,}".format(total_balance) }}
+            </h1>
+        </div>
+    </div>
+
+    <!-- Add Record Form -->
+    <div class="col-12 col-lg-4">
+        <div class="glass-card p-4 h-100">
+            <h5 class="mb-4 d-flex align-items-center gap-2">
+                <i class="ph ph-plus-circle text-primary" style="font-size: 1.25rem;"></i>
+                新增帳目 (New Record)
+            </h5>
+            <form action="{{ url_for('main.add_transaction') }}" method="POST">
+                <div class="mb-3">
+                    <label for="type" class="form-label text-muted small mb-1">屬性 Type</label>
+                    <select class="form-select" id="type" name="type" required>
+                        <option value="expense">支出 (Expense)</option>
+                        <option value="income">收入 (Income)</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="amount" class="form-label text-muted small mb-1">金額 Amount</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border-color); color: var(--text-muted);">$</span>
+                        <input type="number" class="form-control border-start-0 ps-0" id="amount" name="amount" min="0" placeholder="0" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="category" class="form-label text-muted small mb-1">類別 Category</label>
+                    <select class="form-select" id="category" name="category" required>
+                        <option value="飲食">飲食 (Food)</option>
+                        <option value="交通">交通 (Transport)</option>
+                        <option value="娛樂">娛樂 (Entertainment)</option>
+                        <option value="薪水">薪水 (Salary)</option>
+                        <option value="其他">其他 (Other)</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label for="note" class="form-label text-muted small mb-1">備註 Note (可選)</label>
+                    <input type="text" class="form-control" id="note" name="note" placeholder="詳細內容...">
+                </div>
+                <button type="submit" class="btn btn-primary-custom w-100">
+                    新增儲存
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- History List -->
+    <div class="col-12 col-lg-6">
+        <div class="glass-card p-4 h-100 d-flex flex-column">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="m-0 d-flex align-items-center gap-2">
+                    <i class="ph ph-list-dashes text-primary" style="font-size: 1.25rem;"></i>
+                    歷史清單 (History)
+                </h5>
+                <form action="{{ url_for('main.index') }}" method="GET" class="d-flex gap-2">
+                    <select name="category" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+                        <option value="">全部類別</option>
+                        <option value="飲食" {% if selected_category == '飲食' %}selected{% endif %}>飲食</option>
+                        <option value="交通" {% if selected_category == '交通' %}selected{% endif %}>交通</option>
+                        <option value="娛樂" {% if selected_category == '娛樂' %}selected{% endif %}>娛樂</option>
+                        <option value="薪水" {% if selected_category == '薪水' %}selected{% endif %}>薪水</option>
+                        <option value="其他" {% if selected_category == '其他' %}selected{% endif %}>其他</option>
+                    </select>
+                </form>
+            </div>
+            
+            <div class="table-responsive flex-grow-1" style="max-height: 400px; overflow-y: auto;">
+                <table class="table table-custom table-borderless align-middle mb-0">
+                    <thead style="position: sticky; top: 0; background: var(--bg-card); backdrop-filter: blur(8px); z-index: 1;">
+                        <tr>
+                            <th>時間/類別</th>
+                            <th>備註</th>
+                            <th class="text-end">金額</th>
+                            <th class="text-center" style="width: 100px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ts in transactions %}
+                        <tr>
+                            <td style="min-width: 120px;">
+                                <div class="badge badge-custom {{ 'badge-income' if ts.type == 'income' else 'badge-expense' }} mb-1">
+                                    {{ ts.category }}
+                                </div>
+                                <div class="small text-muted" style="font-size: 0.75rem;">
+                                    {{ ts.created_at[:16] }}
+                                </div>
+                            </td>
+                            <td>{{ ts.note }}</td>
+                            <td class="text-end fw-bold {{ 'text-income' if ts.type == 'income' else 'text-expense' }}">
+                                {{ '+' if ts.type == 'income' else '-' }}${{ "{:,}".format(ts.amount) }}
+                            </td>
+                            <td>
+                                <div class="d-flex gap-2 justify-content-center">
+                                    <a href="{{ url_for('main.edit_transaction_page', record_id=ts.id) }}" class="btn btn-sm btn-outline-secondary" style="border-radius: 6px; padding: 0.25rem 0.5rem; border-color: rgba(255,255,255,0.1); color: #fff;" title="Edit">
+                                        <i class="ph ph-pencil-simple"></i>
+                                    </a>
+                                    <form action="{{ url_for('main.delete_transaction', record_id=ts.id) }}" method="POST" class="d-inline" onsubmit="return confirm('確定要刪除這筆紀錄嗎？');">
+                                        <button type="submit" class="btn btn-sm btn-danger-custom" style="border-radius: 6px; padding: 0.25rem 0.5rem;" title="Delete">
+                                            <i class="ph ph-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center py-5 text-muted">
+                                <i class="ph ph-scroll d-block mb-3" style="font-size: 2.5rem; opacity: 0.5;"></i>
+                                目前還沒有符合的紀錄！
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
